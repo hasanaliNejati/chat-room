@@ -11,6 +11,7 @@ public class ServerManager : MonoBehaviour
 
     private bool registerFull = false;
 
+    public bool HasDisconnect = false;
     // Start is called before the first frame update
 
     public async Task ConnectToServer(string url)
@@ -24,15 +25,31 @@ public class ServerManager : MonoBehaviour
             },
             Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
         });
-        await socket.ConnectAsync();
 
         socket.On("usernameGot", (data) => { registerFull = true; });
 
-        socket.OnConnected += (sender, e) => { print("Conected To Server"); };
+        socket.OnDisconnected += (sender, e) =>
+        {
+            print("disconected");
+            HasDisconnect = true;
+        };
+
+        socket.OnConnected += (sender, e) =>
+        {
+            print("Conected To Server");
+            if (HasDisconnect)
+            {
+                HasDisconnect = false;
+            }
+        };
+
+
+        await socket.ConnectAsync();
     }
 
     public async Task<bool> DoRegister(string username)
     {
+        registerFull = false;
         long startTime = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds();
         await socket.EmitAsync("register", username);
 

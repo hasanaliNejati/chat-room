@@ -1,10 +1,6 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
-using UnityEditor.VersionControl;
 using UnityEngine;
-using UnityEngine.UI;
 using Task = System.Threading.Tasks.Task;
 
 public class GameManager : MonoBehaviour
@@ -17,12 +13,18 @@ public class GameManager : MonoBehaviour
 
     public bool InLoading = false;
 
+    private bool HasOnDisconnect = false;
+
     bool _registerd;
+
+    ServerManager ServerManager;
+
 
     async void Start()
     {
+        ServerManager = FindObjectOfType<ServerManager>();
         InLoading = true;
-        await FindObjectOfType<ServerManager>().ConnectToServer("http://127.0.0.1:3000");
+        await ServerManager.ConnectToServer("http://127.0.0.1:3000");
         if (PlayerPrefs.GetString("username", String.Empty) == String.Empty)
         {
             RegisterPanel.SetActive(true);
@@ -49,11 +51,11 @@ public class GameManager : MonoBehaviour
 
     public async Task SetUserName()
     {
-        bool result = await FindObjectOfType<ServerManager>().DoRegister(PlayerPrefs.GetString("username"));
+        bool result = await ServerManager.DoRegister(PlayerPrefs.GetString("username"));
         while (!result)
         {
-            result = await FindObjectOfType<ServerManager>().DoRegister(PlayerPrefs.GetString("username"));
-            Task.Yield();
+            result = await ServerManager.DoRegister(PlayerPrefs.GetString("username"));
+            await Task.Yield();
         }
 
         _registerd = true;
@@ -62,6 +64,22 @@ public class GameManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (ServerManager.HasDisconnect)
+        {
+            InLoading = true;
+            HasOnDisconnect = true;
+        }
+        else if (HasOnDisconnect)
+        {
+            print("reconnected.");
+            HasOnDisconnect = false;
+            InLoading = false;
+            if (PlayerPrefs.GetString("username", String.Empty) != String.Empty)
+            {
+                SetUserName();
+            }
+        }
+
         Loading.SetActive(InLoading);
     }
 }
