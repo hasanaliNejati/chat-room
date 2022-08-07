@@ -12,7 +12,10 @@ public class ServerManager : MonoBehaviour
     private bool registerFull = false;
 
     public bool HasDisconnect = false;
-    // Start is called before the first frame update
+
+    public event EventHandler<MessageBag> GetMessageEvent;
+
+    public event EventHandler<string> WellcomeEvent;
 
     public async Task ConnectToServer(string url)
     {
@@ -43,6 +46,14 @@ public class ServerManager : MonoBehaviour
             }
         };
 
+        socket.OnUnityThread("messageServer", GetNewMessage);
+
+        socket.OnUnityThread("welcome", (data) =>
+        {
+            string result = data.GetValue<string>();
+            WellcomeEvent.Invoke(this, result);
+        });
+
 
         await socket.ConnectAsync();
     }
@@ -64,5 +75,17 @@ public class ServerManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    public async void GetNewMessage(SocketIOResponse data)
+    {
+        var SData = data.GetValue<MessageBag>();
+
+        GetMessageEvent.Invoke(this, SData);
+    }
+
+    public async void SendMessage(string message)
+    {
+        socket.Emit("messageClient", message);
     }
 }
